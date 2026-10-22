@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trade Marketing — Control de solicitudes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: light; box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); background: #F3F0E7; }
+  body { margin: 0; background: #F3F0E7; color: #1E2A28; font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+</style>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+  tailwind.config = { theme: { extend: { fontFamily: {
+    sans: ['"IBM Plex Sans"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+    mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
+  } } } };
+</script>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.383.0/dist/umd/lucide.min.js"></script>
+<script>
+const {
+  useState,
+  useEffect,
+  useCallback,
+  useRef
+} = React;
+const h = React.createElement;
+function Icon({
+  name,
+  size = 16,
+  className = ""
+}) {
+  const node = window.lucide && window.lucide.icons && window.lucide.icons[name];
+  if (!node) return h("span", {
+    style: {
+      display: "inline-block",
+      width: size,
+      height: size
+    }
+  });
+  const kids = (node[2] || []).map((c, i) => h(c[0], {
+    key: i,
+    ...c[1]
+  }));
+  return h("svg", {
+    xmlns: "http://www.w3.org/2000/svg",
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    className,
+    "aria-hidden": true
+  }, kids);
+}
+const mk = n => p => h(Icon, {
+  name: n,
+  ...p
+});
+const ClipboardList = mk("ClipboardList"),
+  CheckCircle2 = mk("CheckCircle2"),
+  XCircle = mk("XCircle"),
+  ArrowUpCircle = mk("ArrowUpCircle"),
+  Camera = mk("Camera"),
+  DollarSign = mk("DollarSign"),
+  Truck = mk("Truck"),
+  PackageCheck = mk("PackageCheck"),
+  LogOut = mk("LogOut"),
+  ChevronRight = mk("ChevronRight"),
+  AlertTriangle = mk("AlertTriangle"),
+  History = mk("History"),
+  Wallet = mk("Wallet"),
+  X = mk("X");
+
+/* ============================================================
+   CONSTANTES Y DATOS BASE
+   ============================================================ */
+
+const REGIONS = ["Oriente", "Centro-Occidente", "Central", "Occidente", "Capital"];
+const ROLES = {
+  VENDEDOR: "Vendedor",
+  COORD_REGIONAL: "Coordinador Regional",
+  COORD_MERCADEO: "Coordinador de Mercadeo",
+  GERENTE: "Gerente de Mercadeo",
+  EQUIPO_INTERNO: "Equipo interno"
+};
+const STATUS = {
+  SOLICITADA: "Solicitada",
+  APROBADA: "Aprobada",
+  RECHAZADA: "Rechazada",
+  EN_REVISION_CENTRAL: "En revisión central",
+  EN_PRODUCCION: "En producción",
+  ENTREGADA: "Entregada",
+  EVIDENCIA_SUBIDA: "Evidencia subida",
+  CERRADA: "Cerrada con evidencia"
+};
+const STATUS_STYLE = {
+  [STATUS.SOLICITADA]: {
+    fg: "#8A5A00",
+    bg: "#FBEFD8",
+    dot: "#D98E2B"
+  },
+  [STATUS.APROBADA]: {
+    fg: "#1F5C42",
+    bg: "#E1F0E5",
+    dot: "#3F8A5C"
+  },
+  [STATUS.RECHAZADA]: {
+    fg: "#8A2E22",
+    bg: "#F7E4DF",
+    dot: "#C1442D"
+  },
+  [STATUS.EN_REVISION_CENTRAL]: {
+    fg: "#5A3B8A",
+    bg: "#EBE3F7",
+    dot: "#7E52C7"
+  },
+  [STATUS.EN_PRODUCCION]: {
+    fg: "#144A5C",
+    bg: "#DEEEF3",
+    dot: "#2A8AA8"
+  },
+  [STATUS.ENTREGADA]: {
+    fg: "#144A5C",
+    bg: "#DEEEF3",
+    dot: "#1F6F8A"
+  },
+  [STATUS.EVIDENCIA_SUBIDA]: {
+    fg: "#6B5300",
+    bg: "#F5EFD6",
+    dot: "#C7A200"
+  },
+  [STATUS.CERRADA]: {
+    fg: "#1F2A28",
+    bg: "#E4E7DF",
+    dot: "#2F6F62"
+  }
+};
+const CATALOGO_INICIAL = [{
+  id: "m1",
+  name: "Franela",
+  cost: 8
+}, {
+  id: "m2",
+  name: "Gorra",
+  cost: 6
+}, {
+  id: "m3",
+  name: "Cuaderno",
+  cost: 3
+}, {
+  id: "m4",
+  name: "Catálogo",
+  cost: 4
+}, {
+  id: "m5",
+  name: "Pliego publicitario",
+  cost: 12
+}];
+const USERS_INICIALES = [{
+  id: "u1",
+  name: "Ana Torres",
+  role: ROLES.VENDEDOR,
+  region: "Oriente"
+}, {
+  id: "u2",
+  name: "Luis Peña",
+  role: ROLES.VENDEDOR,
+  region: "Central"
+}, {
+  id: "u3",
+  name: "Carla Ruiz",
+  role: ROLES.VENDEDOR,
+  region: "Occidente"
+}, {
+  id: "u4",
+  name: "Diego Salas",
+  role: ROLES.VENDEDOR,
+  region: "Centro-Occidente"
+}, {
+  id: "u5",
+  name: "Fabiola León",
+  role: ROLES.VENDEDOR,
+  region: "Capital"
+}, {
+  id: "u6",
+  name: "María Gómez",
+  role: ROLES.COORD_REGIONAL,
+  region: "Oriente"
+}, {
+  id: "u7",
+  name: "Pedro Rivas",
+  role: ROLES.COORD_REGIONAL,
+  region: "Central"
+}, {
+  id: "u8",
+  name: "Jorge Duarte",
+  role: ROLES.COORD_REGIONAL,
+  region: "Centro-Occidente"
+}, {
+  id: "u9",
+  name: "Carmen Ibarra",
+  role: ROLES.COORD_REGIONAL,
+  region: "Occidente"
+}, {
+  id: "u10",
+  name: "Sofía Núñez",
+  role: ROLES.COORD_REGIONAL,
+  region: "Capital"
+}, {
+  id: "u11",
+  name: "Valentina Cruz",
+  role: ROLES.COORD_MERCADEO,
+  region: null
+}, {
+  id: "u12",
+  name: "Roberto Aguilar",
+  role: ROLES.GERENTE,
+  region: null
+}, {
+  id: "u13",
+  name: "Equipo de Producción",
+  role: ROLES.EQUIPO_INTERNO,
+  region: null
+}];
+const BUDGETS_INICIALES = REGIONS.reduce((acc, r) => {
+  acc[r] = {
+    total: 3000,
+    used: 0
+  };
+  return acc;
+}, {});
+const CONFIG_INICIAL = {
+  escalationThreshold: 500
+};
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+
+function money(n) {
+  return "$" + Number(n || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  });
+}
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  const day = 86400000;
+  const days = Math.floor(diff / day);
+  if (days <= 0) return "hoy";
+  if (days === 1) return "hace 1 día";
+  return `hace ${days} días`;
+}
+function resizeImageFile(file, maxWidth = 640, quality = 0.6) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ============================================================
+   COMPONENTES DE UI COMPARTIDOS
+   ============================================================ */
+
+function StatusBadge({
+  status
+}) {
+  const s = STATUS_STYLE[status] || {
+    fg: "#333",
+    bg: "#eee",
+    dot: "#999"
+  };
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: s.fg,
+      background: s.bg
+    },
+    className: "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wide"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-1.5 h-1.5 rounded-full",
+    style: {
+      background: s.dot
+    }
+  }), status);
+}
+function Button({
+  children,
+  variant = "primary",
+  onClick,
+  disabled,
+  className = "",
+  type = "button"
+}) {
+  const base = "inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+  const variants = {
+    primary: "bg-[#2F6F62] text-white hover:bg-[#26594F]",
+    danger: "bg-[#B23A3A] text-white hover:bg-[#96302F]",
+    escalate: "bg-[#7E52C7] text-white hover:bg-[#6941A6]",
+    ghost: "bg-transparent text-[#3A4340] border border-[#D8D2C4] hover:bg-[#EFEBE1]",
+    subtle: "bg-[#EFEBE1] text-[#2A332F] hover:bg-[#E4DECF]"
+  };
+  return /*#__PURE__*/React.createElement("button", {
+    type: type,
+    className: `${base} ${variants[variant]} ${className}`,
+    onClick: onClick,
+    disabled: disabled
+  }, children);
+}
+function Modal({
+  title,
+  onClose,
+  children,
+  wide
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4",
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: `bg-[#FBF9F4] rounded-lg shadow-xl w-full ${wide ? "max-w-2xl" : "max-w-md"} max-h-[90vh] overflow-y-auto`,
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between px-5 py-4 border-b border-[#E3DECF] sticky top-0 bg-[#FBF9F4]"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-semibold text-[#1E2A28] text-base"
+  }, title), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "text-[#7A756A] hover:text-[#1E2A28]"
+  }, /*#__PURE__*/React.createElement(X, {
+    size: 18
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "p-5"
+  }, children)));
+}
+function Field({
+  label,
+  children
+}) {
+  return /*#__PURE__*/React.createElement("label", {
+    className: "block mb-3.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "block text-[12px] font-medium text-[#5B6360] mb-1"
+  }, label), children);
+}
+const inputCls = "w-full border border-[#D8D2C4] rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2F6F62]/40 focus:border-[#2F6F62]";
+function BudgetBar({
+  region,
+  budget
+}) {
+  const pct = Math.min(100, budget.used / budget.total * 100);
+  const over = pct >= 90;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "mb-2.5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between text-[12px] mb-1"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "font-medium text-[#2A332F]"
+  }, region), /*#__PURE__*/React.createElement("span", {
+    className: "font-mono text-[#5B6360]"
+  }, money(budget.used), " / ", money(budget.total))), /*#__PURE__*/React.createElement("div", {
+    className: "h-1.5 rounded-full bg-[#E3DECF] overflow-hidden"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "h-full rounded-full",
+    style: {
+      width: pct + "%",
+      background: over ? "#C1442D" : "#2F6F62"
+    }
+  })));
+}
+
+/* ============================================================
+   TARJETA DE SOLICITUD (estilo ticket)
+   ============================================================ */
+
+function RequestTicket({
+  req,
+  children,
+  expanded,
+  onToggle
+}) {
+  const s = STATUS_STYLE[req.status];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "bg-white rounded-lg border border-[#E3DECF] overflow-hidden mb-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-1.5",
+    style: {
+      background: s.dot
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 p-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start justify-between gap-3 flex-wrap"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 flex-wrap"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "font-mono text-[11px] text-[#9A9484]"
+  }, req.id), /*#__PURE__*/React.createElement(StatusBadge, {
+    status: req.status
+  }), req.status === STATUS.SOLICITADA && req.costoTotal > req._threshold && /*#__PURE__*/React.createElement("span", {
+    className: "inline-flex items-center gap-1 text-[11px] text-[#8A5300] font-medium"
+  }, /*#__PURE__*/React.createElement(AlertTriangle, {
+    size: 12
+  }), " requiere escalamiento")), /*#__PURE__*/React.createElement("div", {
+    className: "mt-1.5 font-medium text-[#1E2A28] text-[15px]"
+  }, req.cliente), /*#__PURE__*/React.createElement("div", {
+    className: "text-[13px] text-[#6B655A]"
+  }, req.materialName, " · x", req.cantidad, " · ", req.region)), /*#__PURE__*/React.createElement("div", {
+    className: "text-right"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "font-mono text-[15px] text-[#1E2A28]"
+  }, money(req.costoTotal)), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] text-[#9A9484]"
+  }, timeAgo(req._tsCreated)))), /*#__PURE__*/React.createElement("div", {
+    className: "mt-3 flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onToggle,
+    className: "text-[12px] text-[#5B6360] hover:text-[#1E2A28] inline-flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement(History, {
+    size: 13
+  }), expanded ? "Ocultar historial" : "Ver historial")), expanded && /*#__PURE__*/React.createElement("div", {
+    className: "mt-3 pt-3 border-t border-dashed border-[#E3DECF] space-y-1.5"
+  }, req.history.map((h, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: "text-[12px] text-[#5B6360] flex gap-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-[#9A9484] font-mono w-20 shrink-0"
+  }, new Date(h.ts).toLocaleDateString()), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+    className: "font-medium text-[#2A332F]"
+  }, h.action), " — ", h.user, " (", h.role, ")"))), req.motivoRechazo && /*#__PURE__*/React.createElement("div", {
+    className: "text-[12px] text-[#8A2E22] mt-1"
+  }, "Motivo de rechazo: ", req.motivoRechazo), req.roi !== null && req.roi !== undefined && /*#__PURE__*/React.createElement("div", {
+    className: "text-[12px] text-[#1F5C42] mt-1 font-medium"
+  }, "Valor de compra: ", money(req.valorCompra), " · ROI: ", req.roi.toFixed(0), "%")), children && /*#__PURE__*/React.createElement("div", {
+    className: "mt-3 pt-3 border-t border-[#F0ECE0] flex flex-wrap gap-2"
+  }, children))));
+}
+
+/* ============================================================
+   FORMULARIO: NUEVA SOLICITUD MATERIAL POP
+   ============================================================ */
+
+function NewRequestForm({
+  user,
+  catalog,
+  onSubmit,
+  onClose
+}) {
+  const [cliente, setCliente] = useState("");
+  const [materialId, setMaterialId] = useState(catalog[0]?.id || "");
+  const [cantidad, setCantidad] = useState(1);
+  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [motivo, setMotivo] = useState("");
+  const [categoria, setCategoria] = useState("Comercial");
+  const [customCost, setCustomCost] = useState("");
+  const material = catalog.find(m => m.id === materialId);
+  const unitCost = customCost !== "" ? Number(customCost) : material?.cost || 0;
+  const total = unitCost * Number(cantidad || 0);
+  const canSubmit = cliente.trim() && materialId && cantidad > 0 && fecha && motivo.trim();
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Field, {
+    label: "Cliente"
+  }, /*#__PURE__*/React.createElement("input", {
+    className: inputCls,
+    value: cliente,
+    onChange: e => setCliente(e.target.value),
+    placeholder: "Nombre del cliente o punto de venta"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Material"
+  }, /*#__PURE__*/React.createElement("select", {
+    className: inputCls,
+    value: materialId,
+    onChange: e => setMaterialId(e.target.value)
+  }, catalog.map(m => /*#__PURE__*/React.createElement("option", {
+    key: m.id,
+    value: m.id
+  }, m.name, " (", money(m.cost), " c/u)")))), /*#__PURE__*/React.createElement(Field, {
+    label: "Cantidad"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: 1,
+    className: inputCls,
+    value: cantidad,
+    onChange: e => setCantidad(e.target.value)
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Costo unitario (editar si es distinto)"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    className: inputCls,
+    value: customCost !== "" ? customCost : unitCost,
+    onChange: e => setCustomCost(e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Fecha"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    className: inputCls,
+    value: fecha,
+    onChange: e => setFecha(e.target.value)
+  }))), /*#__PURE__*/React.createElement(Field, {
+    label: "Categoría"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2"
+  }, ["Comercial", "Mercadeo"].map(c => /*#__PURE__*/React.createElement("button", {
+    key: c,
+    onClick: () => setCategoria(c),
+    className: `px-3 py-1.5 rounded-md text-sm border ${categoria === c ? "bg-[#2F6F62] text-white border-[#2F6F62]" : "border-[#D8D2C4] text-[#3A4340]"}`
+  }, c)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Motivo de la solicitud"
+  }, /*#__PURE__*/React.createElement("textarea", {
+    className: inputCls,
+    rows: 2,
+    value: motivo,
+    onChange: e => setMotivo(e.target.value),
+    placeholder: "¿Para qué lo necesita el cliente?"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between bg-[#F1EEE3] rounded-md px-3.5 py-2.5 mb-4"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-[13px] text-[#5B6360]"
+  }, "Costo total estimado"), /*#__PURE__*/React.createElement("span", {
+    className: "font-mono text-[16px] text-[#1E2A28] font-medium"
+  }, money(total))), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end gap-2"
+  }, /*#__PURE__*/React.createElement(Button, {
+    variant: "ghost",
+    onClick: onClose
+  }, "Cancelar"), /*#__PURE__*/React.createElement(Button, {
+    disabled: !canSubmit,
+    onClick: () => onSubmit({
+      cliente: cliente.trim(),
+      materialId,
+      materialName: material?.name,
+      cantidad: Number(cantidad),
+      costoUnitario: unitCost,
+      costoTotal: total,
+      fecha,
+      motivo: motivo.trim(),
+      categoria,
+      region: user.region,
+      vendedorId: user.id,
+      vendedorName: user.name
+    })
+  }, "Enviar solicitud")));
+}
+
+/* ============================================================
+   MODAL: RECHAZAR (motivo obligatorio)
+   ============================================================ */
+
+function RejectModal({
+  onConfirm,
+  onClose
+}) {
+  const [motivo, setMotivo] = useState("");
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: "Rechazar solicitud",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Motivo del rechazo (obligatorio)"
+  }, /*#__PURE__*/React.createElement("textarea", {
+    autoFocus: true,
+    className: inputCls,
+    rows: 3,
+    value: motivo,
+    onChange: e => setMotivo(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end gap-2"
+  }, /*#__PURE__*/React.createElement(Button, {
+    variant: "ghost",
+    onClick: onClose
+  }, "Cancelar"), /*#__PURE__*/React.createElement(Button, {
+    variant: "danger",
+    disabled: !motivo.trim(),
+    onClick: () => onConfirm(motivo.trim())
+  }, "Confirmar rechazo")));
+}
+
+/* ============================================================
+   MODAL: SUBIR EVIDENCIA (foto)
+   ============================================================ */
+
+function EvidenceModal({
+  onConfirm,
+  onClose
+}) {
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const fileRef = useRef(null);
+  async function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLoading(true);
+    const b64 = await resizeImageFile(file);
+    setPreview(b64);
+    setLoading(false);
+  }
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: "Subir foto de evidencia de entrega",
+    onClose: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "border-2 border-dashed border-[#D8D2C4] rounded-lg p-6 text-center cursor-pointer hover:border-[#2F6F62]",
+    onClick: () => fileRef.current?.click()
+  }, preview ? /*#__PURE__*/React.createElement("img", {
+    src: preview,
+    alt: "evidencia",
+    className: "max-h-56 mx-auto rounded"
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "text-[#7A756A] text-sm"
+  }, /*#__PURE__*/React.createElement(Camera, {
+    className: "mx-auto mb-2",
+    size: 28
+  }), loading ? "Procesando foto…" : "Toca para tomar o elegir una foto"), /*#__PURE__*/React.createElement("input", {
+    ref: fileRef,
+    type: "file",
+    accept: "image/*",
+    capture: "environment",
+    className: "hidden",
+    onChange: handleFile
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end gap-2 mt-4"
+  }, /*#__PURE__*/React.createElement(Button, {
+    variant: "ghost",
+    onClick: onClose
+  }, "Cancelar"), /*#__PURE__*/React.createElement(Button, {
+    disabled: !preview,
+    onClick: () => onConfirm(preview)
+  }, "Guardar evidencia")));
+}
+
+/* ============================================================
+   MODAL: REGISTRAR VALOR DE COMPRA (ROI)
+   ============================================================ */
+
+function PurchaseValueModal({
+  req,
+  onConfirm,
+  onClose
+}) {
+  const [valor, setValor] = useState("");
+  const roiPreview = valor !== "" ? ((Number(valor) - req.costoTotal) / req.costoTotal * 100).toFixed(0) : null;
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: "Registrar valor de compra del cliente",
+    onClose: onClose
+  }, req.evidenciaFoto && /*#__PURE__*/React.createElement("img", {
+    src: req.evidenciaFoto,
+    alt: "evidencia",
+    className: "max-h-48 rounded mb-4 mx-auto"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "text-[13px] text-[#5B6360] mb-3"
+  }, "Costo de la solicitud: ", /*#__PURE__*/React.createElement("span", {
+    className: "font-mono text-[#1E2A28]"
+  }, money(req.costoTotal))), /*#__PURE__*/React.createElement(Field, {
+    label: "Valor de compra del cliente"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    autoFocus: true,
+    className: inputCls,
+    value: valor,
+    onChange: e => setValor(e.target.value)
+  })), roiPreview !== null && /*#__PURE__*/React.createElement("div", {
+    className: "text-[13px] mb-3 text-[#1F5C42] font-medium"
+  }, "ROI estimado: ", roiPreview, "%"), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end gap-2"
+  }, /*#__PURE__*/React.createElement(Button, {
+    variant: "ghost",
+    onClick: onClose
+  }, "Cancelar"), /*#__PURE__*/React.createElement(Button, {
+    disabled: valor === "",
+    onClick: () => onConfirm(Number(valor))
+  }, "Calcular ROI y cerrar")));
+}
+
+/* ============================================================
+   VISTA: VENDEDOR
+   ============================================================ */
+
+function VendedorView({
+  user,
+  state,
+  actions
+}) {
+  const [showNew, setShowNew] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+  const [evidenceReqId, setEvidenceReqId] = useState(null);
+  const regionRequests = state.requests.filter(r => r.region === user.region).sort((a, b) => b._tsCreated - a._tsCreated);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-4"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
+    className: "text-lg font-semibold text-[#1E2A28]"
+  }, "Solicitudes de ", user.region), /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px] text-[#7A756A]"
+  }, "Material POP · visibles solo para tu región")), /*#__PURE__*/React.createElement(Button, {
+    onClick: () => setShowNew(true)
+  }, "+ Nueva solicitud")), regionRequests.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "text-center py-16 text-[#9A9484] text-sm"
+  }, "Aún no hay solicitudes en tu región."), regionRequests.map(req => /*#__PURE__*/React.createElement(RequestTicket, {
+    key: req.id,
+    req: {
+      ...req,
+      _threshold: state.config.escalationThreshold
+    },
+    expanded: expandedId === req.id,
+    onToggle: () => setExpandedId(expandedId === req.id ? null : req.id)
+  }, req.status === STATUS.RECHAZADA && /*#__PURE__*/React.createElement("span", {
+    className: "text-[12px] text-[#8A2E22]"
+  }, "Puedes ajustar y volver a enviarla como una nueva solicitud."), req.status === STATUS.ENTREGADA && /*#__PURE__*/React.createElement(Button, {
+    variant: "subtle",
+    onClick: () => setEvidenceReqId(req.id)
+  }, /*#__PURE__*/React.createElement(Camera, {
+    size: 14
+  }), " Subir foto de evidencia"), req.status === STATUS.EVIDENCIA_SUBIDA && /*#__PURE__*/React.createElement("span", {
+    className: "text-[12px] text-[#6B5300]"
+  }, "Evidencia subida — esperando registro de valor de compra por Mercadeo."))), showNew && /*#__PURE__*/React.createElement(Modal, {
+    title: "Nueva solicitud — Material POP",
+    onClose: () => setShowNew(false),
+    wide: true
+  }, /*#__PURE__*/React.createElement(NewRequestForm, {
+    user: user,
+    catalog: state.catalog,
+    onClose: () => setShowNew(false),
+    onSubmit: data => {
+      actions.createRequest(data);
+      setShowNew(false);
+    }
+  })), evidenceReqId && /*#__PURE__*/React.createElement(EvidenceModal, {
+    onClose: () => setEvidenceReqId(null),
+    onConfirm: photo => {
+      actions.uploadEvidencia(evidenceReqId, photo);
+      setEvidenceReqId(null);
+    }
+  }));
+}
+
+/* ============================================================
+   VISTA: COORDINADOR REGIONAL
+   ============================================================ */
+
+function CoordinadorRegionalView({
+  user,
+  state,
+  actions
+}) {
+  const [expandedId, setExpandedId] = useState(null);
+  const [rejectReqId, setRejectReqId] = useState(null);
+  const budget = state.budgets[user.region];
+  const threshold = state.config.escalationThreshold;
+  const pending = state.requests.filter(r => r.region === user.region && r.status === STATUS.SOLICITADA).sort((a, b) => a._tsCreated - b._tsCreated);
+  const others = state.requests.filter(r => r.region === user.region && r.status !== STATUS.SOLICITADA).sort((a, b) => b._tsCreated - a._tsCreated);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "grid md:grid-cols-3 gap-4 mb-6"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "md:col-span-2"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-lg font-semibold text-[#1E2A28] mb-1"
+  }, "Bandeja de ", user.region), /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px] text-[#7A756A]"
+  }, "Filtra qué solicitudes aplican. Escala automáticamente las que superen ", money(threshold), ".")), /*#__PURE__*/React.createElement("div", {
+    className: "bg-white border border-[#E3DECF] rounded-lg p-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1.5 text-[12px] text-[#5B6360] mb-2 font-medium"
+  }, /*#__PURE__*/React.createElement(Wallet, {
+    size: 13
+  }), " Presupuesto regional"), /*#__PURE__*/React.createElement(BudgetBar, {
+    region: user.region,
+    budget: budget
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] text-[#9A9484]"
+  }, "Disponible: ", money(budget.total - budget.used)))), /*#__PURE__*/React.createElement("h3", {
+    className: "text-[13px] font-semibold text-[#5B6360] uppercase tracking-wide mb-2"
+  }, "Pendientes (", pending.length, ")"), pending.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "text-[13px] text-[#9A9484] mb-6"
+  }, "No hay solicitudes esperando revisión."), pending.map(req => {
+    const needsEscalation = req.costoTotal > threshold;
+    const available = budget.total - budget.used;
+    const overBudget = req.costoTotal > available;
+    return /*#__PURE__*/React.createElement(RequestTicket, {
+      key: req.id,
+      req: {
+        ...req,
+        _threshold: threshold
+      },
+      expanded: expandedId === req.id,
+      onToggle: () => setExpandedId(expandedId === req.id ? null : req.id)
+    }, overBudget && !needsEscalation && /*#__PURE__*/React.createElement("div", {
+      className: "w-full text-[12px] text-[#B23A3A] flex items-center gap-1 mb-1"
+    }, /*#__PURE__*/React.createElement(AlertTriangle, {
+      size: 13
+    }), " Presupuesto insuficiente: disponible ", money(available), ", costo ", money(req.costoTotal), ". Solo el Gerente puede ajustar el presupuesto."), !needsEscalation && /*#__PURE__*/React.createElement(Button, {
+      variant: "primary",
+      disabled: overBudget,
+      onClick: () => actions.approveRegional(req.id)
+    }, /*#__PURE__*/React.createElement(CheckCircle2, {
+      size: 14
+    }), " Aprobar"), needsEscalation && /*#__PURE__*/React.createElement(Button, {
+      variant: "escalate",
+      onClick: () => actions.escalate(req.id)
+    }, /*#__PURE__*/React.createElement(ArrowUpCircle, {
+      size: 14
+    }), " Escalar a Mercadeo"), /*#__PURE__*/React.createElement(Button, {
+      variant: "danger",
+      onClick: () => setRejectReqId(req.id)
+    }, /*#__PURE__*/React.createElement(XCircle, {
+      size: 14
+    }), " Rechazar"));
+  }), /*#__PURE__*/React.createElement("h3", {
+    className: "text-[13px] font-semibold text-[#5B6360] uppercase tracking-wide mb-2 mt-6"
+  }, "Historial de la región"), others.map(req => /*#__PURE__*/React.createElement(RequestTicket, {
+    key: req.id,
+    req: {
+      ...req,
+      _threshold: threshold
+    },
+    expanded: expandedId === req.id,
+    onToggle: () => setExpandedId(expandedId === req.id ? null : req.id)
+  })), rejectReqId && /*#__PURE__*/React.createElement(RejectModal, {
+    onClose: () => setRejectReqId(null),
+    onConfirm: motivo => {
+      actions.rejectRequest(rejectReqId, motivo, ROLES.COORD_REGIONAL);
+      setRejectReqId(null);
+    }
+  }));
+}
+
+/* ============================================================
+   VISTA: MERCADEO (Coordinador de Mercadeo / Gerente)
+   ============================================================ */
+
+function MercadeoView({
+  user,
+  state,
+  actions,
+  isGerente
+}) {
+  const [expandedId, setExpandedId] = useState(null);
+  const [rejectReqId, setRejectReqId] = useState(null);
+  const [purchaseReqId, setPurchaseReqId] = useState(null);
+  const [editingBudgets, setEditingBudgets] = useState(false);
+  const [budgetDraft, setBudgetDraft] = useState(state.budgets);
+  const [thresholdDraft, setThresholdDraft] = useState(state.config.escalationThreshold);
+  const escalated = state.requests.filter(r => r.status === STATUS.EN_REVISION_CENTRAL).sort((a, b) => a._tsCreated - b._tsCreated);
+  const needsPurchaseValue = state.requests.filter(r => r.status === STATUS.EVIDENCIA_SUBIDA).sort((a, b) => a._tsCreated - b._tsCreated);
+  const rest = state.requests.filter(r => ![STATUS.EN_REVISION_CENTRAL, STATUS.EVIDENCIA_SUBIDA].includes(r.status)).sort((a, b) => b._tsCreated - a._tsCreated);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "grid lg:grid-cols-3 gap-4 mb-6"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "lg:col-span-2"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-lg font-semibold text-[#1E2A28] mb-1"
+  }, "Vista de todas las regiones"), /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px] text-[#7A756A]"
+  }, "Aprobación de solicitudes escaladas y cierre con evidencia y ROI.")), /*#__PURE__*/React.createElement("div", {
+    className: "bg-white border border-[#E3DECF] rounded-lg p-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1.5 text-[12px] text-[#5B6360] font-medium"
+  }, /*#__PURE__*/React.createElement(Wallet, {
+    size: 13
+  }), " Presupuestos por región"), isGerente && /*#__PURE__*/React.createElement("button", {
+    className: "text-[11px] text-[#2F6F62] font-medium",
+    onClick: () => setEditingBudgets(!editingBudgets)
+  }, editingBudgets ? "Cerrar" : "Ajustar")), !editingBudgets && REGIONS.map(r => /*#__PURE__*/React.createElement(BudgetBar, {
+    key: r,
+    region: r,
+    budget: state.budgets[r]
+  })), editingBudgets && /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2"
+  }, REGIONS.map(r => /*#__PURE__*/React.createElement("div", {
+    key: r,
+    className: "flex items-center justify-between gap-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-[12px] text-[#2A332F] w-28"
+  }, r), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    className: inputCls + " py-1 text-[12px]",
+    value: budgetDraft[r].total,
+    onChange: e => setBudgetDraft({
+      ...budgetDraft,
+      [r]: {
+        ...budgetDraft[r],
+        total: Number(e.target.value)
+      }
+    })
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "pt-1"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-[12px] text-[#2A332F] block mb-1"
+  }, "Monto de escalamiento"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    className: inputCls + " py-1 text-[12px]",
+    value: thresholdDraft,
+    onChange: e => setThresholdDraft(Number(e.target.value))
+  })), /*#__PURE__*/React.createElement(Button, {
+    className: "w-full mt-2",
+    onClick: () => {
+      actions.updateSettings(budgetDraft, thresholdDraft);
+      setEditingBudgets(false);
+    }
+  }, "Guardar cambios")))), /*#__PURE__*/React.createElement("h3", {
+    className: "text-[13px] font-semibold text-[#5B6360] uppercase tracking-wide mb-2"
+  }, "Escaladas para aprobación (", escalated.length, ")"), escalated.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "text-[13px] text-[#9A9484] mb-6"
+  }, "No hay solicitudes escaladas pendientes."), escalated.map(req => {
+    const budget = state.budgets[req.region];
+    const available = budget.total - budget.used;
+    const overBudget = req.costoTotal > available;
+    return /*#__PURE__*/React.createElement(RequestTicket, {
+      key: req.id,
+      req: {
+        ...req,
+        _threshold: state.config.escalationThreshold
+      },
+      expanded: expandedId === req.id,
+      onToggle: () => setExpandedId(expandedId === req.id ? null : req.id)
+    }, overBudget && /*#__PURE__*/React.createElement("div", {
+      className: "w-full text-[12px] text-[#B23A3A] flex items-center gap-1 mb-1"
+    }, /*#__PURE__*/React.createElement(AlertTriangle, {
+      size: 13
+    }), " Presupuesto de ", req.region, " insuficiente: disponible ", money(available), "."), /*#__PURE__*/React.createElement(Button, {
+      disabled: overBudget,
+      onClick: () => actions.approveMercadeo(req.id)
+    }, /*#__PURE__*/React.createElement(CheckCircle2, {
+      size: 14
+    }), " Aprobar"), /*#__PURE__*/React.createElement(Button, {
+      variant: "danger",
+      onClick: () => setRejectReqId(req.id)
+    }, /*#__PURE__*/React.createElement(XCircle, {
+      size: 14
+    }), " Rechazar"));
+  }), /*#__PURE__*/React.createElement("h3", {
+    className: "text-[13px] font-semibold text-[#5B6360] uppercase tracking-wide mb-2 mt-6"
+  }, "Pendientes de valor de compra / ROI (", needsPurchaseValue.length, ")"), needsPurchaseValue.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "text-[13px] text-[#9A9484] mb-6"
+  }, "No hay evidencias esperando cierre."), needsPurchaseValue.map(req => /*#__PURE__*/React.createElement(RequestTicket, {
+    key: req.id,
+    req: {
+      ...req,
+      _threshold: state.config.escalationThreshold
+    },
+    expanded: expandedId === req.id,
+    onToggle: () => setExpandedId(expandedId === req.id ? null : req.id)
+  }, /*#__PURE__*/React.createElement(Button, {
+    onClick: () => setPurchaseReqId(req.id)
+  }, /*#__PURE__*/React.createElement(DollarSign, {
+    size: 14
+  }), " Registrar valor de compra"))), /*#__PURE__*/React.createElement("h3", {
+    className: "text-[13px] font-semibold text-[#5B6360] uppercase tracking-wide mb-2 mt-6"
+  }, "Todas las demás solicitudes"), rest.map(req => /*#__PURE__*/React.createElement(RequestTicket, {
+    key: req.id,
+    req: {
+      ...req,
+      _threshold: state.config.escalationThreshold
+    },
+    expanded: expandedId === req.id,
+    onToggle: () => setExpandedId(expandedId === req.id ? null : req.id)
+  })), rejectReqId && /*#__PURE__*/React.createElement(RejectModal, {
+    onClose: () => setRejectReqId(null),
+    onConfirm: motivo => {
+      actions.rejectRequest(rejectReqId, motivo, ROLES.COORD_MERCADEO);
+      setRejectReqId(null);
+    }
+  }), purchaseReqId && /*#__PURE__*/React.createElement(PurchaseValueModal, {
+    req: state.requests.find(r => r.id === purchaseReqId),
+    onClose: () => setPurchaseReqId(null),
+    onConfirm: valor => {
+      actions.registrarValorCompra(purchaseReqId, valor);
+      setPurchaseReqId(null);
+    }
+  }));
+}
+
+/* ============================================================
+   VISTA: EQUIPO INTERNO
+   ============================================================ */
+
+function EquipoInternoView({
+  state,
+  actions
+}) {
+  const [expandedId, setExpandedId] = useState(null);
+  const aprobadas = state.requests.filter(r => r.status === STATUS.APROBADA).sort((a, b) => a._tsCreated - b._tsCreated);
+  const enProduccion = state.requests.filter(r => r.status === STATUS.EN_PRODUCCION).sort((a, b) => a._tsCreated - b._tsCreated);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
+    className: "text-lg font-semibold text-[#1E2A28] mb-1"
+  }, "Bandeja de producción"), /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px] text-[#7A756A] mb-5"
+  }, "Marca el avance de cada solicitud aprobada."), /*#__PURE__*/React.createElement("h3", {
+    className: "text-[13px] font-semibold text-[#5B6360] uppercase tracking-wide mb-2"
+  }, "Por iniciar (", aprobadas.length, ")"), aprobadas.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "text-[13px] text-[#9A9484] mb-6"
+  }, "No hay solicitudes por iniciar."), aprobadas.map(req => /*#__PURE__*/React.createElement(RequestTicket, {
+    key: req.id,
+    req: req,
+    expanded: expandedId === req.id,
+    onToggle: () => setExpandedId(expandedId === req.id ? null : req.id)
+  }, /*#__PURE__*/React.createElement(Button, {
+    onClick: () => actions.markEnProduccion(req.id)
+  }, /*#__PURE__*/React.createElement(Truck, {
+    size: 14
+  }), " Marcar en producción"))), /*#__PURE__*/React.createElement("h3", {
+    className: "text-[13px] font-semibold text-[#5B6360] uppercase tracking-wide mb-2 mt-6"
+  }, "En producción (", enProduccion.length, ")"), enProduccion.length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "text-[13px] text-[#9A9484]"
+  }, "No hay solicitudes en producción."), enProduccion.map(req => /*#__PURE__*/React.createElement(RequestTicket, {
+    key: req.id,
+    req: req,
+    expanded: expandedId === req.id,
+    onToggle: () => setExpandedId(expandedId === req.id ? null : req.id)
+  }, /*#__PURE__*/React.createElement(Button, {
+    onClick: () => actions.markEntregada(req.id)
+  }, /*#__PURE__*/React.createElement(PackageCheck, {
+    size: 14
+  }), " Marcar como entregada"))));
+}
+
+/* ============================================================
+   LOGIN
+   ============================================================ */
+
+function LoginScreen({
+  users,
+  onLogin
+}) {
+  const groups = [ROLES.VENDEDOR, ROLES.COORD_REGIONAL, ROLES.COORD_MERCADEO, ROLES.GERENTE, ROLES.EQUIPO_INTERNO];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen bg-[#F3F0E7] flex items-center justify-center p-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-full max-w-lg"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-center mb-8"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "inline-flex items-center gap-2 text-[#2F6F62] mb-2"
+  }, /*#__PURE__*/React.createElement(ClipboardList, {
+    size: 22
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "font-mono text-[12px] tracking-widest uppercase"
+  }, "Trade Marketing")), /*#__PURE__*/React.createElement("h1", {
+    className: "text-2xl font-semibold text-[#1E2A28]"
+  }, "Control de solicitudes"), /*#__PURE__*/React.createElement("p", {
+    className: "text-[13px] text-[#7A756A] mt-1"
+  }, "Elige con qué usuario quieres entrar a la demo.")), /*#__PURE__*/React.createElement("div", {
+    className: "bg-white border border-[#E3DECF] rounded-lg divide-y divide-[#F0ECE0]"
+  }, groups.map(role => /*#__PURE__*/React.createElement("div", {
+    key: role,
+    className: "p-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] font-medium uppercase tracking-wide text-[#9A9484] px-2 mb-1.5"
+  }, role), users.filter(u => u.role === role).map(u => /*#__PURE__*/React.createElement("button", {
+    key: u.id,
+    onClick: () => onLogin(u),
+    className: "w-full flex items-center justify-between px-2 py-2 rounded-md hover:bg-[#F3F0E7] text-left"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-[14px] text-[#1E2A28]"
+  }, u.name, u.region ? /*#__PURE__*/React.createElement("span", {
+    className: "text-[#9A9484]"
+  }, " · ", u.region) : null), /*#__PURE__*/React.createElement(ChevronRight, {
+    size: 15,
+    className: "text-[#B8B1A2]"
+  }))))))));
+}
+
+/* ============================================================
+   APP RAÍZ
+   ============================================================ */
+
+function seedRequests() {
+  const now = Date.now();
+  const day = 86400000;
+  return [{
+    id: "sol-1001",
+    tipo: "Material POP",
+    cliente: "Abastos El Progreso",
+    materialId: "m1",
+    materialName: "Franela",
+    cantidad: 40,
+    costoUnitario: 8,
+    costoTotal: 320,
+    fecha: new Date(now - 6 * day).toISOString().slice(0, 10),
+    motivo: "Activación de marca en punto de venta",
+    categoria: "Comercial",
+    region: "Oriente",
+    vendedorId: "u1",
+    vendedorName: "Ana Torres",
+    status: STATUS.APROBADA,
+    evidenciaFoto: null,
+    valorCompra: null,
+    roi: null,
+    history: [{
+      action: "Creada",
+      user: "Ana Torres",
+      role: ROLES.VENDEDOR,
+      ts: now - 6 * day
+    }, {
+      action: "Aprobada",
+      user: "María Gómez",
+      role: ROLES.COORD_REGIONAL,
+      ts: now - 5 * day
+    }]
+  }, {
+    id: "sol-1002",
+    tipo: "Material POP",
+    cliente: "Super Central Norte",
+    materialId: "m5",
+    materialName: "Pliego publicitario",
+    cantidad: 60,
+    costoUnitario: 12,
+    costoTotal: 720,
+    fecha: new Date(now - 10 * day).toISOString().slice(0, 10),
+    motivo: "Lanzamiento de producto nuevo",
+    categoria: "Mercadeo",
+    region: "Central",
+    vendedorId: "u2",
+    vendedorName: "Luis Peña",
+    status: STATUS.EN_REVISION_CENTRAL,
+    evidenciaFoto: null,
+    valorCompra: null,
+    roi: null,
+    history: [{
+      action: "Creada",
+      user: "Luis Peña",
+      role: ROLES.VENDEDOR,
+      ts: now - 10 * day
+    }, {
+      action: "Escalada (supera el monto configurado)",
+      user: "Pedro Rivas",
+      role: ROLES.COORD_REGIONAL,
+      ts: now - 9 * day
+    }]
+  }, {
+    id: "sol-1003",
+    tipo: "Material POP",
+    cliente: "Comercial Los Andes",
+    materialId: "m2",
+    materialName: "Gorra",
+    cantidad: 25,
+    costoUnitario: 6,
+    costoTotal: 150,
+    fecha: new Date(now - 15 * day).toISOString().slice(0, 10),
+    motivo: "Cliente frecuente, refuerzo de marca",
+    categoria: "Comercial",
+    region: "Oriente",
+    vendedorId: "u1",
+    vendedorName: "Ana Torres",
+    status: STATUS.ENTREGADA,
+    evidenciaFoto: null,
+    valorCompra: null,
+    roi: null,
+    history: [{
+      action: "Creada",
+      user: "Ana Torres",
+      role: ROLES.VENDEDOR,
+      ts: now - 15 * day
+    }, {
+      action: "Aprobada",
+      user: "María Gómez",
+      role: ROLES.COORD_REGIONAL,
+      ts: now - 14 * day
+    }, {
+      action: "Marcada en producción",
+      user: "Equipo de Producción",
+      role: ROLES.EQUIPO_INTERNO,
+      ts: now - 12 * day
+    }, {
+      action: "Marcada como entregada",
+      user: "Equipo de Producción",
+      role: ROLES.EQUIPO_INTERNO,
+      ts: now - 9 * day
+    }]
+  }];
+}
+const STORAGE_KEY = "tm-app-state-v1";
+function seedState() {
+  return {
+    users: USERS_INICIALES,
+    catalog: CATALOGO_INICIAL,
+    budgets: BUDGETS_INICIALES,
+    config: CONFIG_INICIAL,
+    requests: seedRequests()
+  };
+}
+
+/* ============================================================
+   APP RAÍZ (datos compartidos con el runtime `db`)
+   ============================================================ */
+
+const COUNTED = [STATUS.ENTREGADA, STATUS.EVIDENCIA_SUBIDA, STATUS.CERRADA];
+function buildState(rawRequests, meta) {
+  const requests = rawRequests.map(r => ({
+    ...r,
+    _tsCreated: r.history && r.history[0] && r.history[0].ts || 0
+  })).sort((a, b) => b._tsCreated - a._tsCreated);
+  const config = {
+    escalationThreshold: meta && typeof meta.escalationThreshold === "number" ? meta.escalationThreshold : CONFIG_INICIAL.escalationThreshold
+  };
+  const budgets = {};
+  REGIONS.forEach(reg => {
+    const total = meta && meta.totals && typeof meta.totals[reg] === "number" ? meta.totals[reg] : BUDGETS_INICIALES[reg].total;
+    const used = requests.filter(r => r.region === reg && COUNTED.includes(r.status)).reduce((s, r) => s + r.costoTotal, 0);
+    budgets[reg] = {
+      total,
+      used
+    };
+  });
+  return {
+    users: USERS_INICIALES,
+    catalog: CATALOGO_INICIAL,
+    budgets,
+    config,
+    requests
+  };
+}
+function stripDerived(r) {
+  const {
+    _tsCreated,
+    _threshold,
+    ...clean
+  } = r;
+  return clean;
+}
+function App() {
+  const [reqs, setReqs] = useState([]);
+  const [meta, setMeta] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saveError, setSaveError] = useState(false);
+  const [localMode, setLocalMode] = useState(false);
+  const dbRef = useRef(null);
+  useEffect(() => {
+    let cancelled = false;
+    const unsubs = [];
+    (async () => {
+      let db = null;
+      try {
+        if (window.claude && window.claude.use) db = await window.claude.use("db");
+      } catch (e) {
+        db = null;
+      }
+      if (cancelled) return;
+      if (!db) {
+        setLocalMode(true);
+        setReqs(seedRequests());
+        setLoading(false);
+        return;
+      }
+      dbRef.current = db;
+      try {
+        unsubs.push(db.collection("requests").onSnapshot(snap => {
+          setReqs(snap.docs.map(d => d.data()));
+          setLoading(false);
+        }, () => setLoading(false)));
+        unsubs.push(db.doc("meta/state").onSnapshot(snap => setMeta(snap.exists ? snap.data() : null), () => {}));
+      } catch (e) {
+        setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      unsubs.forEach(u => u && u());
+    };
+  }, []);
+  const state = buildState(reqs, meta);
+  function writeRequest(req) {
+    const clean = stripDerived(req);
+    if (!dbRef.current) {
+      setReqs(prev => prev.some(r => r.id === clean.id) ? prev.map(r => r.id === clean.id ? clean : r) : [clean, ...prev]);
+      return;
+    }
+    dbRef.current.doc("requests/" + clean.id).set(clean).then(() => setSaveError(false)).catch(() => setSaveError(true));
+  }
+  function updateRequest(id, updater) {
+    const current = state.requests.find(r => r.id === id);
+    if (!current) return;
+    writeRequest(updater({
+      ...current
+    }));
+  }
+  function pushHistory(req, text) {
+    req.history = [...req.history, {
+      action: text,
+      user: user.name,
+      role: user.role,
+      ts: Date.now()
+    }];
+    return req;
+  }
+  const actions = {
+    createRequest(data) {
+      const id = "sol-" + Math.floor(1000 + Math.random() * 9000);
+      const now = Date.now();
+      writeRequest({
+        id,
+        tipo: "Material POP",
+        ...data,
+        status: STATUS.SOLICITADA,
+        evidenciaFoto: null,
+        valorCompra: null,
+        roi: null,
+        history: [{
+          action: "Creada",
+          user: user.name,
+          role: user.role,
+          ts: now
+        }]
+      });
+    },
+    approveRegional(id) {
+      updateRequest(id, r => {
+        r.status = STATUS.APROBADA;
+        return pushHistory(r, "Aprobada");
+      });
+    },
+    approveMercadeo(id) {
+      updateRequest(id, r => {
+        r.status = STATUS.APROBADA;
+        return pushHistory(r, "Aprobada (escalada)");
+      });
+    },
+    rejectRequest(id, motivo) {
+      updateRequest(id, r => {
+        r.status = STATUS.RECHAZADA;
+        r.motivoRechazo = motivo;
+        return pushHistory(r, "Rechazada");
+      });
+    },
+    escalate(id) {
+      updateRequest(id, r => {
+        r.status = STATUS.EN_REVISION_CENTRAL;
+        return pushHistory(r, "Escalada (supera el monto configurado)");
+      });
+    },
+    markEnProduccion(id) {
+      updateRequest(id, r => {
+        r.status = STATUS.EN_PRODUCCION;
+        return pushHistory(r, "Marcada en producción");
+      });
+    },
+    markEntregada(id) {
+      updateRequest(id, r => {
+        r.status = STATUS.ENTREGADA;
+        return pushHistory(r, "Marcada como entregada (presupuesto descontado)");
+      });
+    },
+    uploadEvidencia(id, photo) {
+      updateRequest(id, r => {
+        r.status = STATUS.EVIDENCIA_SUBIDA;
+        r.evidenciaFoto = photo;
+        return pushHistory(r, "Evidencia de entrega subida");
+      });
+    },
+    registrarValorCompra(id, valor) {
+      updateRequest(id, r => {
+        r.valorCompra = valor;
+        r.roi = (valor - r.costoTotal) / r.costoTotal * 100;
+        r.status = STATUS.CERRADA;
+        return pushHistory(r, "Valor de compra registrado — cerrada con ROI");
+      });
+    },
+    updateSettings(budgetDraft, threshold) {
+      const totals = {};
+      REGIONS.forEach(r => {
+        totals[r] = Number(budgetDraft[r].total) || 0;
+      });
+      const next = {
+        totals,
+        escalationThreshold: Number(threshold) || 0
+      };
+      if (!dbRef.current) {
+        setMeta(next);
+        return;
+      }
+      dbRef.current.doc("meta/state").set(next).then(() => setSaveError(false)).catch(() => setSaveError(true));
+    }
+  };
+  if (loading) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "min-h-screen bg-[#F3F0E7] flex items-center justify-center text-[#7A756A] text-sm"
+    }, "Cargando…");
+  }
+  if (!user) {
+    return /*#__PURE__*/React.createElement(LoginScreen, {
+      users: state.users,
+      onLogin: setUser
+    });
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen bg-[#F3F0E7]"
+  }, /*#__PURE__*/React.createElement("header", {
+    className: "bg-[#1E2A28] text-white"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "max-w-5xl mx-auto px-4 py-3 flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement(ClipboardList, {
+    size: 18,
+    className: "text-[#8FBBAF]"
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "font-mono text-[12px] tracking-widest uppercase text-[#8FBBAF]"
+  }, "Trade Marketing")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-right"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-[13px] font-medium leading-none"
+  }, user.name), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] text-[#9FB0AC] mt-0.5"
+  }, user.role, user.region ? ` · ${user.region}` : "")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setUser(null),
+    className: "text-[#9FB0AC] hover:text-white p-1.5",
+    "aria-label": "Salir"
+  }, /*#__PURE__*/React.createElement(LogOut, {
+    size: 16
+  }))))), localMode && /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#FBEFD8] text-[#8A5A00] text-[12px] text-center py-1.5"
+  }, "Modo local: los cambios no se guardan ni se comparten."), saveError && /*#__PURE__*/React.createElement("div", {
+    className: "bg-[#F7E4DF] text-[#8A2E22] text-[12px] text-center py-1.5"
+  }, "No se pudo guardar el último cambio. Puede que tu acceso sea solo de lectura."), /*#__PURE__*/React.createElement("main", {
+    className: "max-w-5xl mx-auto px-4 py-6"
+  }, user.role === ROLES.VENDEDOR && /*#__PURE__*/React.createElement(VendedorView, {
+    user: user,
+    state: state,
+    actions: actions
+  }), user.role === ROLES.COORD_REGIONAL && /*#__PURE__*/React.createElement(CoordinadorRegionalView, {
+    user: user,
+    state: state,
+    actions: actions
+  }), (user.role === ROLES.COORD_MERCADEO || user.role === ROLES.GERENTE) && /*#__PURE__*/React.createElement(MercadeoView, {
+    user: user,
+    state: state,
+    actions: actions,
+    isGerente: user.role === ROLES.GERENTE
+  }), user.role === ROLES.EQUIPO_INTERNO && /*#__PURE__*/React.createElement(EquipoInternoView, {
+    state: state,
+    actions: actions
+  })));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
+</script>
+</body>
+</html>
