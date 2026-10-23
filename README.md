@@ -1,79 +1,115 @@
-[README.md](https://github.com/user-attachments/files/33840597/README.md)
-# Trade Marketing — Control de solicitudes (MVP: Material POP)
+[README.md](https://github.com/user-attachments/files/33879902/README.md)
+# Trade Marketing — Control de solicitudes
 
-App web de una sola página para gestionar solicitudes de Material POP: desde que el vendedor la pide hasta que Mercadeo la cierra con evidencia y ROI.
+App web de una sola página para gestionar solicitudes de Trade Marketing: Material POP, Inducciones al piso de venta y Exhibiciones.
 
-## Contenido
+## Archivos
 
 | Archivo | Descripción |
 |---|---|
 | `index.html` | La app completa (HTML + JS en un solo archivo). |
 | `README.md` | Este documento. |
 
-## Cómo abrirla
+## Accesos
 
-1. Descarga `index.html`.
-2. Ábrelo con doble clic en tu navegador (Chrome, Edge, Safari o Firefox).
+| Rol | Quién | Clave |
+|---|---|---|
+| Vendedor | Se entra por región (Oriente, Centro-Occidente, Central, Occidente, Capital) | Sin clave |
+| Coordinador Regional (solo ver) | Iván Marín (Centro-Occidente), Adelis Torres (Central), Enrique González (Capital), Miguel Contreras (Occidente), Joaquín Martínez (Oriente) | 3030 |
+| Coordinador de Mercadeo | Luisana Jaramillo | 2828 |
+| Gerente de Mercadeo | Luisana Harraka | 2828 |
+| Equipo de producción (Material POP) | Edwin Vaquero | 2929 |
 
-Necesita conexión a internet: carga React, Tailwind CSS, los iconos y las fuentes desde CDN.
+Las claves están escritas dentro del código de la página, así que sirven para ordenar el acceso pero no son seguridad real: cualquiera que vea el código fuente las puede leer.
 
-### Importante: persistencia de datos
+## Solicitudes
 
-Fuera de Claude, la app corre en **modo local**: funciona completa, pero los datos viven solo en la memoria de esa pestaña. Al recargar, vuelve a los 3 datos de ejemplo, y nadie más ve tus cambios.
+Cada solicitud pide **nombre, apellido y correo electrónico** de quien la hace, la **marca** (FERMETAL, UNIQUE o MULTIMARCAS), el **cliente**, la fecha y la categoría (Comercial o Mercadeo).
 
-La versión publicada en Claude sí guarda y comparte los datos entre usuarios (usa el almacenamiento propio de la plataforma). Para tener datos compartidos fuera de Claude hace falta conectar una base de datos real (ver "Siguientes pasos").
+Tipos:
 
-## Usuarios de demo
+- **Material POP:** casillas de selección con cantidad por material, y motivo.
+  - Franelas $4
+  - Cuadernos $6
+  - Bolsas ecológicas $2
+  - Pliegos $0,40
+  - Volantes línea cobra $0,20
+- **Inducción al piso de venta:** cantidad de personas, descripción y costo estimado opcional.
+- **Exhibición:** medidas del espacio, sugerido (texto largo) y foto del espacio. El costo no lo pone el vendedor: lo define Mercadeo al aprobarla.
 
-La pantalla de login permite entrar como cualquiera de estos usuarios (no hay contraseñas, es una simulación para probar roles):
+### Clasificación automática de clientes
 
-- **Vendedor** (uno por región): crea solicitudes y sube la foto de evidencia. Solo ve su región.
-- **Coordinador Regional** (uno por región): aprueba, rechaza o escala las solicitudes de su región.
-- **Coordinador de Mercadeo:** aprueba o rechaza las escaladas y registra el valor de compra (ROI).
-- **Gerente de Mercadeo:** lo mismo que el anterior, y además ajusta presupuestos por región y el monto de escalamiento.
-- **Equipo interno:** marca solicitudes como "En producción" y "Entregada".
+La app incluye el listado `CLASIFICACIÓN_DE_CLIENTES_POR_REGIÓN.xlsx` (1.080 clientes en las 5 regiones). El vendedor escribe el nombre del cliente de su región, elige el resultado de la lista y la app asigna sola la clasificación (Baja contribución, En crecimiento, Estratégico o VIP) y muestra su compra promedio mensual. La clasificación queda guardada en la solicitud.
 
-Regiones: Oriente, Centro-Occidente, Central, Occidente y Capital.
+Reglas:
 
-## Flujo de una solicitud
+- Si la compra promedio mensual del cliente es de $0 a $100 (incluye promedios negativos), **no aplica ninguna solicitud** y no se puede enviar.
+- Si el cliente es **Baja contribución** y se pide una **Exhibición**, aparece la alerta "Cliente no cumple con criterio para exhibición" y no se puede enviar esa solicitud.
+- Si el nombre no está en el listado de la región, no se puede continuar.
+
+Para actualizar la clasificación hay que reemplazar los datos de clientes dentro de la app (no se leen del Excel en vivo).
+
+## Flujo
 
 ```
-Solicitada ─┬─► Aprobada ──► En producción ──► Entregada ──► Evidencia subida ──► Cerrada con evidencia
-            ├─► Rechazada                                                          (ROI calculado)
-            └─► En revisión central ─┬─► Aprobada (continúa igual)
-                                     └─► Rechazada
+Solicitada ─┬─► Aprobada ─► (según el tipo, ver abajo) ─► Evidencia subida ─► Cerrada con evidencia
+            └─► Rechazada
 ```
 
-Reglas principales:
+**Aprobación (solo Mercadeo)**
 
-- **Escalamiento:** si el costo supera el monto configurado (500 por defecto), el Coordinador Regional no puede aprobar; debe escalar a Mercadeo.
-- **Presupuesto por región:** no se puede aprobar una solicitud que supere el presupuesto disponible. Solo el Gerente puede ajustar los totales.
-- **Descuento de presupuesto:** se aplica cuando la solicitud pasa a "Entregada" (el presupuesto usado es la suma de las solicitudes entregadas o posteriores).
-- **Rechazos:** el motivo es obligatorio.
-- **Evidencia y ROI:** el vendedor sube una foto de la entrega; Mercadeo registra el valor de compra del cliente y el ROI se calcula como `(valor de compra − costo) / costo × 100`.
-- **Historial:** cada solicitud guarda quién hizo qué y cuándo.
+- Aprueban y rechazan Luisana Jaramillo y Luisana Harraka, con botones Aprobar y Rechazar. El rechazo exige motivo.
+- Los coordinadores regionales solo ven las solicitudes de su región.
+- Una campana junto al nombre de usuario de Mercadeo muestra cuántas solicitudes están por aprobar. Suma cada solicitud nueva y baja al aprobar o rechazar.
 
-## Configuración por defecto
+**Presupuesto**
 
-Está al inicio del código, dentro de `index.html`:
+- **Todo se descuenta al aprobar**, sea Material POP, Inducción o Exhibición.
+- En las exhibiciones, Mercadeo escribe el monto del costo al aprobar y se descuenta de inmediato. Si el monto supera lo disponible, no se puede aprobar; solo el Gerente ajusta presupuestos.
+- Los coordinadores regionales ven cuánto les queda disponible de su presupuesto, que se actualiza con cada aprobación.
 
-- Catálogo: Franela (8), Gorra (6), Cuaderno (3), Catálogo (4), Pliego publicitario (12).
-- Presupuesto inicial: 3.000 por región.
-- Monto de escalamiento: 500.
+**Material POP — lo actualiza Producción**
 
-Son valores de ejemplo; ajústalos a los reales (el PRD deja pendientes el catálogo y los presupuestos).
+```
+Aprobada ─► En preparación ─► Entregado a transporte ─► Entregado a vendedor
+```
 
-## Publicarla en internet
+Cuando Mercadeo aprueba un Material POP, le llega a Producción (Edwin Vaquero) una notificación: una campana con el número de solicitudes nuevas por preparar. Producción avanza el estatus paso a paso.
 
-Como es un solo archivo estático, sirve cualquier hosting de archivos estáticos (Netlify, Vercel, GitHub Pages, Cloudflare Pages): sube `index.html` y listo. Sin base de datos, seguirá en modo local.
+**Exhibiciones — lo actualiza Mercadeo** (en su propia lista, separada de las inducciones)
 
-## Siguientes pasos sugeridos
+```
+Aprobada ─► Proceso de diseño/renderizado ─► En producción ─► Exhibición entregada a transporte
+```
 
-1. **Base de datos real** (Supabase, Firebase u otra) para compartir datos entre usuarios, reemplazando la capa de almacenamiento de la app.
-2. **Autenticación real** con usuarios y contraseñas, en lugar del login simulado, y permisos por rol aplicados en el servidor.
-3. **Almacenamiento de fotos** en un servicio de archivos, en lugar de guardarlas dentro del registro.
-4. **Resto del PRD:** solicitudes de Exhibiciones e Inducciones, seguimiento mensual de exhibiciones y resúmenes con IA.
+**Inducciones al piso de venta — las aprueba y actualiza Mercadeo** (en su propia lista, separada de las exhibiciones)
 
-## Alcance actual
+```
+Aprobada ─► Programada ─► Realizada
+```
 
-Incluye solo el flujo completo de **Material POP**, como validación del MVP. Exhibiciones, Inducciones y los resúmenes con IA no están implementados.
+
+**Cierre:** cuando el material, la exhibición o la inducción llega a su estatus final, el vendedor puede subir la foto de evidencia y Mercadeo registra el valor de compra del cliente. El ROI se calcula como `(valor de compra − costo) / costo × 100`; si la solicitud no tiene costo, solo se registra el valor de compra.
+
+Cada solicitud guarda su historial de cambios.
+
+## Aviso de estatus por correo
+
+Cuando Mercadeo aprueba, rechaza, cierra una solicitud o actualiza el estatus de una exhibición, la app muestra una ventana con el correo ya redactado para el solicitante (asunto, estatus, motivo si fue rechazada y detalle de la solicitud). También hay un enlace "Avisar por correo" en cada solicitud de la vista de Mercadeo para reenviar el estatus actual.
+
+- **"Abrir en mi correo"** abre el programa de correo del usuario con el mensaje listo; la persona de Mercadeo lo revisa y lo envía.
+- **"Copiar mensaje"** sirve si el navegador no abre el programa de correo.
+- No es un envío automático: la app no envía correos por sí sola. Para eso hace falta un servidor propio (ver "Pendiente").
+
+## Datos compartidos
+
+Los datos se guardan y comparten solo en la versión publicada en Claude, y únicamente quienes tengan permiso de escritura sobre esa página pueden crear o modificar solicitudes (el dueño y, según el plan, los miembros de la organización con acceso). Una persona externa con enlace público solo puede ver.
+
+Si abres `index.html` por tu cuenta, funciona en modo local: los datos viven en la pestaña y se pierden al recargar.
+
+Para uso real con vendedores y coordinadores externos a la organización hace falta una base de datos y autenticación propias (por ejemplo Supabase o Firebase).
+
+## Pendiente
+
+- Envío automático de correos (requiere servidor propio, por ejemplo Supabase con un servicio de correo).
+- Seguimiento mensual de exhibiciones y resúmenes con IA (según el PRD).
